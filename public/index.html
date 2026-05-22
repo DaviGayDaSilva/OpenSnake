@@ -9,14 +9,34 @@
 <body>
   <!-- Tela de lobby -->
   <div id="lobby">
-    <h1>OpenSnake</h1>
-    <div id="lobby-actions">
-      <button id="createRoomBtn">Criar Sala</button>
+    <h1>🐍 OpenSnake</h1>
+    
+    <div id="lobby-tabs">
+      <button class="tab-btn active" data-tab="create">Criar Sala</button>
+      <button class="tab-btn" data-tab="join">Entrar em Sala</button>
+    </div>
+
+    <div id="tab-create" class="tab-content active">
+      <input type="text" id="playerNameCreate" placeholder="Seu nome (opcional)" maxlength="12">
+      <div class="bot-selector">
+        <label>Bots na sala:</label>
+        <div class="bot-controls">
+          <button id="botMinus">-</button>
+          <span id="botCount">2</span>
+          <button id="botPlus">+</button>
+        </div>
+      </div>
+      <button id="createRoomBtn">🎮 Criar Sala</button>
+    </div>
+
+    <div id="tab-join" class="tab-content">
+      <input type="text" id="playerNameJoin" placeholder="Seu nome (opcional)" maxlength="12">
       <div id="join-area">
-        <input type="text" id="roomCodeInput" placeholder="Código da sala" maxlength="4">
-        <button id="joinRoomBtn">Entrar</button>
+        <input type="text" id="roomCodeInput" placeholder="Código" maxlength="4" autocomplete="off">
+        <button id="joinRoomBtn">▶ Entrar</button>
       </div>
     </div>
+
     <p id="lobby-message"></p>
     <div id="room-info" style="display: none;">
       <p>Sala: <strong id="roomCodeDisplay"></strong></p>
@@ -24,16 +44,23 @@
     </div>
   </div>
 
-  <!-- Tela do jogo (oculta inicialmente) -->
+  <!-- Tela do jogo -->
   <div id="game-container" style="display: none;">
-    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    <div id="game-area">
+      <canvas id="gameCanvas" width="800" height="600"></canvas>
+      <div id="bot-controls">
+        <button id="addBotBtn" title="Adicionar bot">➕ Bot</button>
+      </div>
+    </div>
     <div id="sidebar">
       <div id="timer">⏱ 60</div>
-      <h3>Placar</h3>
+      <h3>🏆 Placar</h3>
       <ul id="scoreboard"></ul>
       <div id="chat-box">
         <ul id="chat-messages"></ul>
-        <input type="text" id="chatInput" placeholder="Chat...">
+        <div id="chat-input-area">
+          <input type="text" id="chatInput" placeholder="Chat..." maxlength="60">
+        </div>
       </div>
     </div>
   </div>
