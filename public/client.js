@@ -24,16 +24,44 @@ const voiceIcon = document.getElementById('voiceIcon');
 const voiceStatus = document.getElementById('voiceStatus');
 const voiceUsers = document.getElementById('voice-users');
 
-// ============ WEBRTC ============
+// ============ WEBRTC COM TURN (FUNCIONA EM REDES DIFERENTES) ============
 let localStream = null;
 let isVoiceActive = false;
-const peerConnections = new Map(); // socketId -> RTCPeerConnection
+const peerConnections = new Map();
 
+// Servidores STUN e TURN públicos para atravessar NAT
 const rtcConfig = {
   iceServers: [
+    // STUN do Google (gratuito)
     { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:stun1.l.google.com:19302' }
-  ]
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun2.l.google.com:19302' },
+    { urls: 'stun:stun3.l.google.com:19302' },
+    { urls: 'stun:stun4.l.google.com:19302' },
+    
+    // STUN da Twilio
+    { urls: 'stun:global.stun.twilio.com:3478' },
+    
+    // TURN público da Metered.ca (gratuito, limite de 50GB/mês)
+    {
+      urls: [
+        'turn:openrelay.metered.ca:80',
+        'turn:openrelay.metered.ca:443',
+        'turn:openrelay.metered.ca:443?transport=tcp'
+      ],
+      username: 'openrelayproject',
+      credential: 'openrelayproject'
+    },
+    
+    // TURN da Twilio (gratuito para teste)
+    {
+      urls: 'turn:global.turn.twilio.com:3478?transport=tcp',
+      username: 'f4b4035eaa76f4a55de5f4351567653ee73ff31198a0a4ed52b3b96e1b4cf51a',
+      credential: 'Z2jgZDck3sQxL9NMN3u1FmNx4nm8qUwKCEVjxB6LXU8='
+    }
+  ],
+  iceCandidatePoolSize: 10,
+  iceTransportPolicy: 'all' // 'relay' forçaria TURN, 'all' tenta P2P primeiro
 };
 
 async function toggleVoice() {
@@ -62,7 +90,6 @@ async function joinVoice() {
     
     socket.emit('voice-join');
     
-    // Quando receber lista de usuários existentes, cria ofertas para cada um
     socket.on('voice-users-list', (users) => {
       users.forEach(userId => {
         createPeerConnection(userId);
@@ -70,20 +97,18 @@ async function joinVoice() {
       });
     });
     
-    // Quando um novo usuário entrar
     socket.on('voice-user-joined', (userId) => {
       createPeerConnection(userId);
       createOffer(userId);
     });
     
-    // Quando um usuário sair
     socket.on('voice-user-left', (userId) => {
       closePeerConnection(userId);
       updateVoiceUsersList();
     });
     
-    // Receber oferta
     socket.on('voice-offer', async ({ from, offer }) => {
+      console.log(`Recebida oferta de ${from}`);
       const pc = createPeerConnection(from);
       await pc.setRemoteDescription(new RTCSessionDescription(offer));
       const answer = await pc.createAnswer();
@@ -91,15 +116,14 @@ async function joinVoice() {
       socket.emit('voice-answer', { to: from, answer });
     });
     
-    // Receber resposta
     socket.on('voice-answer', async ({ from, answer }) => {
+      console.log(`Recebida resposta de ${from}`);
       const pc = peerConnections.get(from);
       if (pc && pc.signalingState === 'have-local-offer') {
         await pc.setRemoteDescription(new RTCSessionDescription(answer));
       }
     });
     
-    // Receber candidato ICE
     socket.on('voice-ice-candidate', async ({ from, candidate }) => {
       const pc = peerConnections.get(from);
       if (pc) {
@@ -115,7 +139,7 @@ async function joinVoice() {
     
   } catch (err) {
     console.error('Erro ao acessar microfone:', err);
-    alert('Não foi possível acessar o microfone. Verifique as permissões.');
+    alert('Não foi possível acessar o microfone. Verifique as permissões do navegador.');
     isVoiceActive = false;
     voiceIcon.textContent = '🎙️';
     voiceStatus.textContent = 'Entrar';
@@ -129,13 +153,11 @@ function leaveVoice() {
   voiceStatus.textContent = 'Entrar';
   voiceToggleBtn.classList.remove('active');
   
-  // Fecha todas as conexões
   for (const [userId, pc] of peerConnections) {
     pc.close();
   }
   peerConnections.clear();
   
-  // Para o stream local
   if (localStream) {
     localStream.getTracks().forEach(track => track.stop());
     localStream = null;
@@ -143,7 +165,6 @@ function leaveVoice() {
   
   socket.emit('voice-leave');
   
-  // Remove listeners
   socket.off('voice-users-list');
   socket.off('voice-user-joined');
   socket.off('voice-user-left');
@@ -157,30 +178,30 @@ function leaveVoice() {
 function createPeerConnection(userId) {
   if (peerConnections.has(userId)) return peerConnections.get(userId);
   
+  console.log(`Criando conexão P2P com ${userId}`);
   const pc = new RTCPeerConnection(rtcConfig);
   peerConnections.set(userId, pc);
   
-  // Adiciona stream local
   if (localStream) {
     localStream.getTracks().forEach(track => {
       pc.addTrack(track, localStream);
     });
   }
   
-  // Evento de track remoto (áudio do outro usuário)
   pc.ontrack = (event) => {
+    console.log(`Recebendo áudio de ${userId}`);
+    // Remove áudio anterior se existir
+    if (pc.remoteAudio) {
+      pc.remoteAudio.srcObject = null;
+      pc.remoteAudio.remove();
+    }
     const audio = new Audio();
     audio.srcObject = event.streams[0];
     audio.autoplay = true;
     audio.volume = 1.0;
-    
-    // Armazena referência para poder remover depois
-    if (!pc.remoteAudio) {
-      pc.remoteAudio = audio;
-    }
+    pc.remoteAudio = audio;
   };
   
-  // Candidatos ICE
   pc.onicecandidate = (event) => {
     if (event.candidate) {
       socket.emit('voice-ice-candidate', {
@@ -190,11 +211,17 @@ function createPeerConnection(userId) {
     }
   };
   
-  // Estado da conexão
+  pc.oniceconnectionstatechange = () => {
+    console.log(`Estado ICE com ${userId}: ${pc.iceConnectionState}`);
+    if (pc.iceConnectionState === 'connected') {
+      console.log(`✅ Conectado via ${pc.connectionState === 'connected' ? 'P2P direto' : 'TURN relay'} com ${userId}`);
+    }
+    updateVoiceUsersList();
+  };
+  
   pc.onconnectionstatechange = () => {
-    if (pc.connectionState === 'connected') {
-      console.log(`Conectado via WebRTC com ${userId}`);
-    } else if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
+    console.log(`Estado conexão com ${userId}: ${pc.connectionState}`);
+    if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
       closePeerConnection(userId);
       updateVoiceUsersList();
     }
@@ -215,6 +242,7 @@ async function createOffer(userId) {
     });
     await pc.setLocalDescription(offer);
     socket.emit('voice-offer', { to: userId, offer });
+    console.log(`Oferta enviada para ${userId}`);
   } catch (err) {
     console.error('Erro ao criar oferta:', err);
   }
@@ -241,22 +269,24 @@ function updateVoiceUsersList() {
     return;
   }
   
-  // Mostra você mesmo
   const myDiv = document.createElement('div');
   myDiv.className = 'voice-user self';
-  myDiv.innerHTML = '<span class="voice-indicator speaking">●</span> Você (mudo)';
+  myDiv.innerHTML = '<span class="voice-indicator speaking">●</span> Você';
   voiceUsers.appendChild(myDiv);
   
-  // Mostra peers conectados
   let connectedCount = 0;
   for (const [userId, pc] of peerConnections) {
-    if (pc.connectionState === 'connected') {
-      connectedCount++;
-      const userDiv = document.createElement('div');
-      userDiv.className = 'voice-user';
-      userDiv.innerHTML = `<span class="voice-indicator">●</span> ${userId.slice(0, 8)}`;
-      voiceUsers.appendChild(userDiv);
-    }
+    const state = pc.iceConnectionState;
+    const isConnected = state === 'connected' || state === 'completed';
+    if (isConnected) connectedCount++;
+    
+    const userDiv = document.createElement('div');
+    userDiv.className = 'voice-user';
+    const indicator = isConnected ? '●' : '○';
+    const indicatorClass = isConnected ? 'voice-indicator' : 'voice-indicator waiting';
+    const status = isConnected ? '' : ` (${state})`;
+    userDiv.innerHTML = `<span class="${indicatorClass}">${indicator}</span> ${userId.slice(0, 8)}${status}`;
+    voiceUsers.appendChild(userDiv);
   }
   
   if (connectedCount === 0 && peerConnections.size === 0) {
@@ -267,7 +297,6 @@ function updateVoiceUsersList() {
   }
 }
 
-// Toggle voice
 voiceToggleBtn.addEventListener('click', toggleVoice);
 
 // ============ FIM WEBRTC ============
@@ -327,20 +356,14 @@ document.addEventListener('keydown', (e) => {
   else if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') dir = 'left';
   else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') dir = 'right';
 
-  if (dir) {
-    e.preventDefault();
-    socket.emit('direction', dir);
-  }
+  if (dir) { e.preventDefault(); socket.emit('direction', dir); }
 });
 
 // Chat texto
 chatInput.addEventListener('keypress', (e) => {
   if (e.key === 'Enter') {
     const msg = chatInput.value.trim();
-    if (msg) {
-      socket.emit('chat', msg);
-      chatInput.value = '';
-    }
+    if (msg) { socket.emit('chat', msg); chatInput.value = ''; }
   }
 });
 
@@ -351,10 +374,7 @@ socket.on('chatMessage', ({ name, color, msg, isBot }) => {
   chatMessages.scrollTop = chatMessages.scrollHeight;
 });
 
-// Bot controls
-document.getElementById('addBotBtn').addEventListener('click', () => {
-  socket.emit('addBot');
-});
+document.getElementById('addBotBtn').addEventListener('click', () => socket.emit('addBot'));
 
 // Socket events
 socket.on('roomCreated', ({ code, playerId: id, bots }) => {
@@ -381,29 +401,16 @@ socket.on('joinedRoom', ({ code, playerId: id, players, apples, timeLeft }) => {
   render();
 });
 
-socket.on('error', (msg) => {
-  lobbyMessage.textContent = msg;
-});
+socket.on('error', (msg) => { lobbyMessage.textContent = msg; });
 
-socket.on('gameState', (state) => {
-  gameState = state;
-  render();
-});
+socket.on('gameState', (state) => { gameState = state; render(); });
 
-socket.on('roundStart', ({ duration }) => {
-  console.log('Nova partida iniciada!');
-});
+socket.on('roundStart', () => { console.log('Nova partida!'); });
 
-socket.on('gameOver', ({ scores }) => {
-  gameState = null;
-  renderGameOver(scores);
-});
+socket.on('gameOver', ({ scores }) => { gameState = null; renderGameOver(scores); });
 
 socket.on('playerJoined', (player) => {
-  if (gameState) {
-    gameState.players.push(player);
-    render();
-  }
+  if (gameState) { gameState.players.push(player); render(); }
 });
 
 socket.on('playerLeft', (id) => {
@@ -411,7 +418,6 @@ socket.on('playerLeft', (id) => {
     gameState.players = gameState.players.filter(p => p.id !== id);
     render();
   }
-  // Fecha conexão WebRTC se existir
   closePeerConnection(id);
 });
 
@@ -423,7 +429,6 @@ function enterGame() {
 // Renderização
 function render() {
   if (!gameState) return;
-
   ctx.clearRect(0, 0, 800, 600);
   drawGrid();
 
@@ -443,7 +448,6 @@ function render() {
     for (const p of gameState.players) {
       ctx.fillStyle = p.color;
       ctx.fillRect(p.x * CELL + 1, p.y * CELL + 1, CELL - 2, CELL - 2);
-
       const cx = p.x * CELL + CELL / 2;
       const cy = p.y * CELL + CELL / 2;
       ctx.fillStyle = '#fff';
@@ -456,14 +460,12 @@ function render() {
         case 'right': ctx.moveTo(cx + s, cy); ctx.lineTo(cx - s, cy - s); ctx.lineTo(cx - s, cy + s); break;
       }
       ctx.fill();
-
       if (p.isBot) {
         ctx.fillStyle = '#fff';
         ctx.font = '10px Arial';
         ctx.textAlign = 'center';
         ctx.fillText('🤖', cx, cy - 12);
       }
-
       ctx.fillStyle = '#fff';
       ctx.font = 'bold 11px Arial';
       ctx.textAlign = 'center';
@@ -472,14 +474,12 @@ function render() {
   }
 
   document.getElementById('timer').textContent = `⏱ ${gameState.timeLeft ?? 0}`;
-
   scoreboard.innerHTML = '';
   const sorted = [...gameState.players].sort((a, b) => b.score - a.score);
   for (let i = 0; i < sorted.length; i++) {
     const p = sorted[i];
     const li = document.createElement('li');
-    const botIcon = p.isBot ? '🤖 ' : '';
-    li.innerHTML = `<span>${i + 1}º ${botIcon}${p.name || p.id.slice(0, 6)}: ${p.score}</span>`;
+    li.innerHTML = `<span>${i + 1}º ${p.isBot ? '🤖 ' : ''}${p.name || p.id.slice(0, 6)}: ${p.score}</span>`;
     li.style.color = p.color;
     if (p.id === playerId) li.classList.add('current-player');
     scoreboard.appendChild(li);
@@ -490,16 +490,10 @@ function drawGrid() {
   ctx.strokeStyle = '#333';
   ctx.lineWidth = 0.5;
   for (let i = 0; i <= COLS; i++) {
-    ctx.beginPath();
-    ctx.moveTo(i * CELL, 0);
-    ctx.lineTo(i * CELL, 600);
-    ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(i * CELL, 0); ctx.lineTo(i * CELL, 600); ctx.stroke();
   }
   for (let j = 0; j <= ROWS; j++) {
-    ctx.beginPath();
-    ctx.moveTo(0, j * CELL);
-    ctx.lineTo(800, j * CELL);
-    ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, j * CELL); ctx.lineTo(800, j * CELL); ctx.stroke();
   }
 }
 
@@ -513,7 +507,6 @@ function renderGameOver(scores) {
   ctx.fillText('🏆 FIM DE JOGO', 400, 120);
   
   const podiumEmojis = ['🥇', '🥈', '🥉'];
-  
   for (let i = 0; i < Math.min(3, scores.length); i++) {
     const y = 200 + i * 80;
     ctx.fillStyle = 'rgba(255,255,255,0.1)';
@@ -540,7 +533,6 @@ function renderGameOver(scores) {
   ctx.fillText('Nova partida em breve...', 400, 570);
 }
 
-// Limpeza ao fechar a página
 window.addEventListener('beforeunload', () => {
   if (isVoiceActive) leaveVoice();
 });
