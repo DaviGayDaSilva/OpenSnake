@@ -7,12 +7,34 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div id="game-container">
+  <!-- Tela de lobby -->
+  <div id="lobby">
+    <h1>OpenSnake</h1>
+    <div id="lobby-actions">
+      <button id="createRoomBtn">Criar Sala</button>
+      <div id="join-area">
+        <input type="text" id="roomCodeInput" placeholder="Código da sala" maxlength="4">
+        <button id="joinRoomBtn">Entrar</button>
+      </div>
+    </div>
+    <p id="lobby-message"></p>
+    <div id="room-info" style="display: none;">
+      <p>Sala: <strong id="roomCodeDisplay"></strong></p>
+      <p>Compartilhe este código com seus amigos!</p>
+    </div>
+  </div>
+
+  <!-- Tela do jogo (oculta inicialmente) -->
+  <div id="game-container" style="display: none;">
     <canvas id="gameCanvas" width="800" height="600"></canvas>
     <div id="sidebar">
       <div id="timer">⏱ 60</div>
       <h3>Placar</h3>
       <ul id="scoreboard"></ul>
+      <div id="chat-box">
+        <ul id="chat-messages"></ul>
+        <input type="text" id="chatInput" placeholder="Chat...">
+      </div>
     </div>
   </div>
 
