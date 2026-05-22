@@ -56,10 +56,25 @@
       <div id="timer">⏱ 60</div>
       <h3>🏆 Placar</h3>
       <ul id="scoreboard"></ul>
+      
+      <!-- Chat de voz -->
+      <div id="voice-chat">
+        <div id="voice-header">
+          <span>🎤 Voz</span>
+          <button id="voiceToggleBtn" title="Entrar/Sair do chat de voz">
+            <span id="voiceIcon">🎙️</span>
+            <span id="voiceStatus">Entrar</span>
+          </button>
+        </div>
+        <div id="voice-users"></div>
+      </div>
+      
+      <!-- Chat texto -->
       <div id="chat-box">
+        <h4>💬 Chat</h4>
         <ul id="chat-messages"></ul>
         <div id="chat-input-area">
-          <input type="text" id="chatInput" placeholder="Chat..." maxlength="60">
+          <input type="text" id="chatInput" placeholder="Mensagem..." maxlength="60">
         </div>
       </div>
     </div>
