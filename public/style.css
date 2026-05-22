@@ -49,13 +49,8 @@ body {
   transition: all 0.2s;
 }
 
-.tab-btn:first-child {
-  border-radius: 8px 0 0 8px;
-}
-
-.tab-btn:last-child {
-  border-radius: 0 8px 8px 0;
-}
+.tab-btn:first-child { border-radius: 8px 0 0 8px; }
+.tab-btn:last-child { border-radius: 0 8px 8px 0; }
 
 .tab-btn.active {
   background: #e94560;
@@ -69,9 +64,7 @@ body {
   align-items: center;
 }
 
-.tab-content.active {
-  display: flex;
-}
+.tab-content.active { display: flex; }
 
 .tab-content input[type="text"] {
   padding: 12px 15px;
@@ -123,9 +116,7 @@ body {
   font-weight: bold;
 }
 
-.bot-controls button:hover {
-  background: #c23152;
-}
+.bot-controls button:hover { background: #c23152; }
 
 .bot-controls span {
   font-size: 28px;
@@ -133,8 +124,7 @@ body {
   min-width: 30px;
 }
 
-#createRoomBtn,
-#joinRoomBtn {
+#createRoomBtn, #joinRoomBtn {
   padding: 14px 30px;
   font-size: 18px;
   border: none;
@@ -147,10 +137,7 @@ body {
   width: 100%;
 }
 
-#createRoomBtn:hover,
-#joinRoomBtn:hover {
-  background: #c23152;
-}
+#createRoomBtn:hover, #joinRoomBtn:hover { background: #c23152; }
 
 #join-area {
   display: flex;
@@ -172,9 +159,7 @@ body {
   border-radius: 8px;
 }
 
-#room-info p {
-  margin: 5px 0;
-}
+#room-info p { margin: 5px 0; }
 
 #roomCodeDisplay {
   font-size: 24px;
@@ -189,9 +174,7 @@ body {
   gap: 20px;
 }
 
-#game-area {
-  position: relative;
-}
+#game-area { position: relative; }
 
 #gameCanvas {
   background: #111;
@@ -216,9 +199,7 @@ body {
   transition: background 0.2s;
 }
 
-#addBotBtn:hover {
-  background: #1a4a8a;
-}
+#addBotBtn:hover { background: #1a4a8a; }
 
 #sidebar {
   color: #fff;
@@ -233,15 +214,12 @@ body {
   margin-bottom: 15px;
 }
 
-h3 {
-  margin-bottom: 10px;
-  color: #e94560;
-}
+h3, h4 { margin-bottom: 10px; color: #e94560; }
 
 #scoreboard {
   list-style: none;
   padding: 0;
-  margin-bottom: 20px;
+  margin-bottom: 15px;
 }
 
 #scoreboard li {
@@ -258,15 +236,95 @@ h3 {
   border-left: 3px solid #e94560;
 }
 
-#chat-box {
+/* Chat de voz */
+#voice-chat {
   border-top: 1px solid #333;
-  padding-top: 10px;
+  border-bottom: 1px solid #333;
+  padding: 10px 0;
+  margin-bottom: 10px;
+}
+
+#voice-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  font-weight: bold;
+}
+
+#voiceToggleBtn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border: none;
+  border-radius: 15px;
+  background: #0f3460;
+  color: #fff;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s;
+}
+
+#voiceToggleBtn:hover { background: #1a4a8a; }
+
+#voiceToggleBtn.active {
+  background: #e94560;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(233, 69, 96, 0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(233, 69, 96, 0); }
+}
+
+#voiceIcon { font-size: 16px; }
+
+#voice-users {
+  font-size: 12px;
+}
+
+.voice-user {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 0;
+}
+
+.voice-indicator {
+  font-size: 8px;
+  color: #4ade80;
+}
+
+.voice-indicator.speaking {
+  animation: blink 1s infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.voice-user.self {
+  color: #888;
+  font-style: italic;
+}
+
+.voice-empty {
+  color: #666;
+  font-size: 11px;
+  font-style: italic;
+}
+
+/* Chat texto */
+#chat-box {
+  padding-top: 5px;
 }
 
 #chat-messages {
   list-style: none;
   padding: 0;
-  max-height: 180px;
+  max-height: 150px;
   overflow-y: auto;
   margin-bottom: 8px;
   font-size: 13px;
@@ -277,9 +335,7 @@ h3 {
   word-break: break-word;
 }
 
-#chat-input-area {
-  display: flex;
-}
+#chat-input-area { display: flex; }
 
 #chatInput {
   width: 100%;
@@ -289,4 +345,4 @@ h3 {
   background: #0a0a1a;
   color: #fff;
   font-size: 14px;
-  }
+}
